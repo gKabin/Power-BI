@@ -1,0 +1,100 @@
+Top N - Sales_t = 
+SWITCH (
+    VALUES ( 'Switch'[Switch] ),
+    "Fare Type",
+        VAR Items =
+            SELECTCOLUMNS (
+                ALL ( FareType_wOthers ),
+                "RankItem", FareType_wOthers[FareType_wOthers]
+            )
+        VAR ItemsWithValue =
+            ADDCOLUMNS ( Items, "RankMeasure", CALCULATE ( [Sales - Ticket] ) )
+        VAR ItemsWithRank =
+            ADDCOLUMNS (
+                ItemsWithValue,
+                "Rank", RANKX ( ItemsWithValue, [RankMeasure], [RankMeasure], DESC, DENSE )
+            ) 
+        VAR ItemsWithTop =
+            ADDCOLUMNS (
+                ItemsWithRank,
+                "TopOrOthers", IF ( [Rank] <= [TopN Value], [RankItem], "Others" )
+            ) 
+        VAR ItemsFinal =
+            SELECTCOLUMNS (
+                FILTER (
+                    ItemsWithTop,
+                    CONTAINSROW ( VALUES ( FareType_wOthers[FareType_wOthers] ), [TopOrOthers] ) 
+                        && CONTAINSROW ( VALUES ( 'FareType'[Fare type] ), [RankItem] )
+                ),
+                "TopN_Others", [RankItem]
+            )
+        RETURN
+            CALCULATE (
+                [Sales - Ticket],
+                TREATAS ( ItemsFinal, FareType_wOthers[FareType_wOthers] )
+            ),
+    "Origin",
+        VAR Items =
+            SELECTCOLUMNS (
+                ALL ( Origin_wOthers ),
+                "RankItem", Origin_wOthers[Origin_wOthers]
+            )
+        VAR ItemsWithValue =
+            ADDCOLUMNS ( Items, "RankMeasure", CALCULATE ( [Sales - Ticket] ) )
+        VAR ItemsWithRank =
+            ADDCOLUMNS (
+                ItemsWithValue,
+                "Rank", RANKX ( ItemsWithValue, [RankMeasure], [RankMeasure], DESC, DENSE )
+            ) 
+        VAR ItemsWithTop =
+            ADDCOLUMNS (
+                ItemsWithRank,
+                "TopOrOthers", IF ( [Rank] <= [TopN Value], [RankItem], "Others" )
+            )
+        VAR ItemsFinal =
+            SELECTCOLUMNS (
+                FILTER (
+                    ItemsWithTop,
+                    CONTAINSROW ( VALUES ( Origin_wOthers[Origin_wOthers] ), [TopOrOthers] ) 
+                        && CONTAINSROW ( VALUES ( 'Origin'[Origin] ), [RankItem] )
+                ),
+                "TopN_Others", [RankItem]
+            )
+        RETURN
+            CALCULATE (
+                [Sales - Ticket],
+                TREATAS ( ItemsFinal, Origin_wOthers[Origin_wOthers] )
+            ),
+    "Destination",
+        VAR Items =
+            SELECTCOLUMNS (
+                ALL ( Destination_wOthers ),
+                "RankItem", Destination_wOthers[Destination_wOthers]
+            )
+        VAR ItemsWithValue =
+            ADDCOLUMNS ( Items, "RankMeasure", CALCULATE ( [Sales - Ticket] ) )
+        VAR ItemsWithRank =
+            ADDCOLUMNS (
+                ItemsWithValue,
+                "Rank", RANKX ( ItemsWithValue, [RankMeasure], [RankMeasure], DESC, DENSE )
+            ) 
+        VAR ItemsWithTop =
+            ADDCOLUMNS (
+                ItemsWithRank,
+                "TopOrOthers", IF ( [Rank] <= [TopN Value], [RankItem], "Others" )
+            ) 
+        VAR ItemsFinal =
+            SELECTCOLUMNS (
+                FILTER (
+                    ItemsWithTop,
+                    CONTAINSROW ( VALUES ( Destination_wOthers[Destination_wOthers] ), [TopOrOthers] ) 
+                        && CONTAINSROW ( VALUES ( 'Destination'[Destination] ), [RankItem] )
+                ),
+                "TopN_Others", [RankItem]
+            )
+        RETURN
+            CALCULATE (
+                [Sales - Ticket],
+                TREATAS ( ItemsFinal, Destination_wOthers[Destination_wOthers] )
+            )
+)
