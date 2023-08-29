@@ -1,0 +1,100 @@
+Top N - Sales_p = 
+SWITCH (
+    VALUES ( 'Switch - Parcel'[Switch - Parcel] ),
+    "Payment Type",
+        VAR Items =
+            SELECTCOLUMNS (
+                ALL ( 'Payment Type_wOthers' ),
+                "RankItem", 'Payment Type_wOthers'[PaymentType_wOthers]
+            )
+        VAR ItemsWithValue =
+            ADDCOLUMNS ( Items, "RankMeasure", CALCULATE ( [Sales - Parcel] ) )
+        VAR ItemsWithRank =
+            ADDCOLUMNS (
+                ItemsWithValue,
+                "Rank", RANKX ( ItemsWithValue, [RankMeasure], [RankMeasure], DESC, DENSE )
+            ) 
+        VAR ItemsWithTop =
+            ADDCOLUMNS (
+                ItemsWithRank,
+                "TopOrOthers", IF ( [Rank] <= [TopN Value], [RankItem], "Others" )
+            )
+        VAR ItemsFinal =
+            SELECTCOLUMNS (
+                FILTER (
+                    ItemsWithTop,
+                    CONTAINSROW ( VALUES ( 'Payment Type_wOthers'[PaymentType_wOthers] ), [TopOrOthers] ) 
+                        && CONTAINSROW ( VALUES ( 'PaymentType'[payment_type] ), [RankItem] )
+                ),
+                "TopN_Others", [RankItem]
+            )
+        RETURN
+            CALCULATE (
+                [Sales - Parcel],
+                TREATAS ( ItemsFinal, 'Payment Type_wOthers'[PaymentType_wOthers] )
+            ),
+    "Origin",
+        VAR Items =
+            SELECTCOLUMNS (
+                ALL ( 'Parcel - Origin_wOthers' ),
+                "RankItem", 'Parcel - Origin_wOthers'[ParcelOrigin_wOthers]
+            )
+        VAR ItemsWithValue =
+            ADDCOLUMNS ( Items, "RankMeasure", CALCULATE ( [Sales - Parcel] ) )
+        VAR ItemsWithRank =
+            ADDCOLUMNS (
+                ItemsWithValue,
+                "Rank", RANKX ( ItemsWithValue, [RankMeasure], [RankMeasure], DESC, DENSE )
+            ) 
+        VAR ItemsWithTop =
+            ADDCOLUMNS (
+                ItemsWithRank,
+                "TopOrOthers", IF ( [Rank] <= [TopN Value], [RankItem], "Others" )
+            )
+        VAR ItemsFinal =
+            SELECTCOLUMNS (
+                FILTER (
+                    ItemsWithTop,
+                    CONTAINSROW ( VALUES ( 'Parcel - Origin_wOthers'[ParcelOrigin_wOthers] ), [TopOrOthers] ) 
+                        && CONTAINSROW ( VALUES ( 'Parcel Origin'[origin] ), [RankItem] )
+                ),
+                "TopN_Others", [RankItem]
+            )
+        RETURN
+            CALCULATE (
+                [Sales - Parcel],
+                TREATAS ( ItemsFinal, 'Parcel - Origin_wOthers'[ParcelOrigin_wOthers] )
+            ),
+    "Destination",
+        VAR Items =
+            SELECTCOLUMNS (
+                ALL ( 'Parcel Destination_wOthers' ),
+                "RankItem", 'Parcel Destination_wOthers'[ParcelDestination_wOthers]
+            )
+        VAR ItemsWithValue =
+            ADDCOLUMNS ( Items, "RankMeasure", CALCULATE ( [Sales - Parcel] ) )
+        VAR ItemsWithRank =
+            ADDCOLUMNS (
+                ItemsWithValue,
+                "Rank", RANKX ( ItemsWithValue, [RankMeasure], [RankMeasure], DESC, DENSE )
+            ) 
+        VAR ItemsWithTop =
+            ADDCOLUMNS (
+                ItemsWithRank,
+                "TopOrOthers", IF ( [Rank] <= [TopN Value], [RankItem], "Others" )
+            ) 
+        VAR ItemsFinal =
+            SELECTCOLUMNS (
+                FILTER (
+                    ItemsWithTop,
+                    CONTAINSROW ( VALUES ( 'Parcel Destination_wOthers'[ParcelDestination_wOthers] ), [TopOrOthers] ) 
+                        && CONTAINSROW ( VALUES ( 'Parcel Destination'[destination] ), [RankItem] )
+                ),
+                "TopN_Others", [RankItem]
+            )
+        RETURN
+            CALCULATE (
+                [Sales - Parcel],
+                TREATAS ( ItemsFinal, 'Parcel Destination_wOthers'[ParcelDestination_wOthers] )
+            )
+)
