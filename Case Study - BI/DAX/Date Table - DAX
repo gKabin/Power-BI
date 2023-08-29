@@ -1,0 +1,50 @@
+DateBackendCalculation = 
+VAR __MonthsInYear = 12
+----------------------------------------
+VAR __Calendar = 
+    VAR __FirstYear = YEAR ( MINX ( { MIN ( 'Q2 fact'[month] ) }, ''[Value] ) )
+    VAR __FirstMonth = MONTH ( MINX ( { MIN ( 'Q2 fact'[month] ) }, ''[Value] ) )
+    VAR __LastYear =  YEAR ( MAXX ( { MAX ( 'Q2 fact'[month] ) }, ''[Value] ) )
+    VAR __LastMonth =  MONTH ( MAXX ( { MAX ( 'Q2 fact'[month] ) }, ''[Value] ) )
+    RETURN CALENDAR (
+        DATE ( __FirstYear, __FirstMonth, 1 ),
+        DATE ( __LastYear, __LastMonth, 31 )
+    )
+VAR __Step3 = 
+    GENERATE (
+        __Calendar,
+        VAR __IsStandardLocale = IF ( FORMAT( DATE( 2000, 1, 1 ), "oooo" ) = "oooo", TRUE, FALSE )
+        VAR __MonthFormatString = IF( __IsStandardLocale, "mmmm", "oooo" )
+        VAR __Date = [Date]
+        VAR __YearMonthNumber = YEAR ( __Date ) * __MonthsInYear + MONTH ( __Date ) - 1
+        VAR __MonthNumber = MOD ( __YearMonthNumber, __MonthsInYear ) + 1
+        VAR __YearNumber = QUOTIENT ( __YearMonthNumber, __MonthsInYear )
+        VAR __MonthDate = DATE ( __YearNumber, __MonthNumber, 1 )
+        VAR __MonthInQuarterNumber = MOD ( __MonthNumber - 1, 3 ) + 1 + 3 * ( __MonthNumber > 12 )
+        VAR __QuarterNumber = MIN ( ROUNDUP ( __MonthNumber / 3, 0 ), 4 )
+        VAR __YearQuarterNumber = __YearNumber * 4 + __QuarterNumber - 1
+        RETURN ROW ( 
+            "Year Month Key", __YearNumber * 100 + __MonthNumber,
+            "Month", 
+                IF (
+                    __MonthNumber > 12,
+                    FORMAT ( __MonthNumber, "\M00" ),
+                    FORMAT ( __MonthDate, __MonthFormatString )
+                ),
+            "Month Number", __MonthNumber,
+            "Year Month", 
+                IF (
+                    __MonthNumber > 12,
+                    FORMAT ( __MonthNumber, "\M00" ) & FORMAT ( __YearNumber, " 0000" ),
+                    FORMAT ( __Date, __MonthFormatString & " yyyy" )
+                ),
+            "Year Month Number", __YearMonthNumber,
+            "Month In Quarter Number", __MonthInQuarterNumber,
+            "Quarter", FORMAT( __Date, "\QQ" ),
+            "Year Quarter", FORMAT ( __QuarterNumber, "\Q0" ) & "-" & FORMAT ( __YearNumber, "0000" ),
+            "Year Quarter Number", __YearQuarterNumber,
+            "Year", __YearNumber 
+        )
+    )
+RETURN
+    __Step3
