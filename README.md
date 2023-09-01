@@ -2,7 +2,7 @@
 This repository contains several Power BI works as well as relevant DAX and Power Query calculations in Power BI.
 
 
-# Calendar Table - Power Query.
+## Calendar Table - Power Query.
 
 For this Calander to use you have to create two Parameters in Power BI.
 
