@@ -1,0 +1,1255 @@
+{
+  "$schema": "https://vega.github.io/schema/vega/v5.json",
+  "description": "Dataviz by David Bacci: https://www.linkedin.com/in/davbacci/",
+  "autosize": "pad",
+  "background": "white",
+  "padding": {
+    "left": 10,
+    "right": 10,
+    "top": 10,
+    "bottom": 10
+  },
+  "signals": [
+    {"name": "y_step", "value": 33},
+    {"name": "x_step", "value": 26},
+    {
+      "name": "days",
+      "update": "data('days')[0]['days']"
+    },
+    {
+      "name": "yPaddingInner",
+      "value": 0.45
+    },
+    {
+      "name": "yPaddingOuter",
+      "value": 0.2
+    },
+    {
+      "name": "brandColumn",
+      "value": 170
+    },
+    {
+      "name": "startColumn",
+      "value": 45
+    },
+    {"name": "endColumn", "value": 45},
+    {"name": "costColumn", "value": 60},
+    {"name": "daysColumn", "value": 30},
+    {"name": "completionColumn", "value": 75},
+    {
+      "name": "columnPadding",
+      "value": 15
+    },
+    {
+      "name": "height",
+      "update": "bandspace(domain('y').length, yPaddingInner, yPaddingOuter) * y_step"
+    },
+    {
+      "name": "ganttWidth",
+      "update": "days * x_step"
+    },
+    {
+      "name": "width",
+      "update": "ganttWidth"
+    },
+    {
+      "name": "length",
+      "update": "span(domain('xDays'))"
+    },
+    {
+      "name": "today",
+      "update": "timeFormat(datetime(now()),'%d/%m/%y')"
+    },
+    {
+      "name": "todayRule",
+      "update": "today"
+    }
+  ],
+  "data": [
+    {"name": "dataset", "values": [{}]},
+    {
+      "name": "input",
+      "source": "dataset",
+      "transform": [
+        {
+          "type": "formula",
+          "as": "encodedStart",
+          "expr": "timeFormat(datum.start,'%d/%m/%y')"
+        },
+        {
+          "type": "formula",
+          "as": "updatedEnd",
+          "expr": "datetime(toNumber(datum.end)+(1000*60*60*24))"
+        },
+        {
+          "type": "formula",
+          "as": "encodedEnd",
+          "expr": "timeFormat(datum.updatedEnd,'%d/%m/%y')"
+        },
+        {
+          "type": "formula",
+          "as": "days",
+          "expr": "round((datum.updatedEnd-datum.start)/1000/60/60/24)"
+        },
+        {
+          "type": "formula",
+          "as": "completionLabel",
+          "expr": "datum.completion+'%'"
+        },
+        {
+          "type": "formula",
+          "as": "costLabel",
+          "expr": "datum.Cost"
+        },
+        {
+          "type": "window",
+          "sort": {
+            "field": "start",
+            "order": "ascending"
+          },
+          "ops": ["rank"],
+          "as": ["brandSort"],
+          "groupby": ["Program"]
+        }
+      ]
+    },
+    {
+      "name": "programs",
+      "source": "input",
+      "transform": [
+        {
+          "type": "aggregate",
+          "fields": [
+            "start",
+            "end",
+            "Cost",
+            "Brand",
+            "completion"
+          ],
+          "ops": [
+            "min",
+            "max",
+            "sum",
+            "count",
+            "mean"
+          ],
+          "as": [
+            "start",
+            "end",
+            "sum",
+            "count",
+            "completion"
+          ],
+          "groupby": ["Program"]
+        },
+        {
+          "type": "lookup",
+          "from": "input",
+          "key": "start",
+          "values": ["encodedStart"],
+          "fields": ["start"]
+        },
+        {
+          "type": "lookup",
+          "from": "input",
+          "key": "end",
+          "values": ["encodedEnd"],
+          "fields": ["end"]
+        },
+        {
+          "type": "formula",
+          "as": "Brand",
+          "expr": "datum.Program"
+        },
+        {
+          "type": "formula",
+          "as": "brandSort",
+          "expr": "0"
+        },
+        {
+          "type": "formula",
+          "as": "completion",
+          "expr": "round(datum.completion)"
+        },
+        {
+          "type": "formula",
+          "as": "days",
+          "expr": "round((datum.end-datum.start)/1000/60/60/24)+1"
+        },
+        {
+          "type": "window",
+          "sort": {
+            "field": "start",
+            "order": "ascending"
+          },
+          "ops": ["rank"],
+          "as": ["programSort"]
+        }
+      ]
+    },
+    {
+      "name": "brands",
+      "source": "input",
+      "transform": [
+        {
+          "type": "filter",
+          "expr": "datum.milestone != true"
+        },
+        {
+          "type": "lookup",
+          "from": "programs",
+          "key": "Program",
+          "values": ["programSort"],
+          "fields": ["Program"]
+        }
+      ]
+    },
+    {
+      "name": "milestones",
+      "source": "input",
+      "transform": [
+        {
+          "type": "filter",
+          "expr": "datum.milestone == true"
+        },
+        {
+          "type": "lookup",
+          "from": "programs",
+          "key": "Program",
+          "values": ["programSort"],
+          "fields": ["Program"]
+        }
+      ]
+    },
+    {
+      "name": "y_scale",
+      "source": [
+        "brands",
+        "programs",
+        "milestones"
+      ],
+      "transform": [
+        {
+          "type": "window",
+          "sort": {
+            "field": [
+              "programSort",
+              "brandSort"
+            ],
+            "order": [
+              "ascending",
+              "ascending"
+            ]
+          },
+          "ops": ["row_number"],
+          "as": ["finalSort"]
+        }
+      ]
+    },
+    {
+      "name": "days",
+      "source": "input",
+      "transform": [
+        {
+          "type": "aggregate",
+          "fields": ["start", "end"],
+          "ops": ["min", "max"],
+          "as": ["s", "e"]
+        },
+        {
+          "type": "formula",
+          "as": "days",
+          "expr": "round((datum.e-datum.s)/1000/60/60/24)"
+        }
+      ]
+    },
+    {
+      "name": "dayScale",
+      "transform": [
+        {
+          "type": "sequence",
+          "start": -1,
+          "stop": {"signal": "days+8"},
+          "as": "sequence"
+        },
+        {
+          "type": "formula",
+          "as": "date",
+          "expr": "datetime(toNumber(data('days')[0]['s'])+((1000*60*60*24)*datum.sequence))"
+        },
+        {
+          "type": "formula",
+          "as": "encodedDate",
+          "expr": "timeFormat(datum.date,'%d/%m/%y')"
+        }
+      ]
+    },
+    {
+      "name": "weekends",
+      "source": "dayScale",
+      "transform": [
+        {
+          "type": "filter",
+          "expr": "day(datum.date) == 6 || day(datum.date) == 0"
+        }
+      ]
+    }
+  ],
+  "layout": {
+    "padding": {
+      "signal": "columnPadding"
+    },
+    "bounds": "flush",
+    "align": "none"
+  },
+  "marks": [
+    {
+      "type": "group",
+      "name": "brandColumn",
+      "style": "cell",
+      "title": {
+        "text": "Brand",
+        "anchor": "start",
+        "frame": "group",
+        "align": "left",
+        "color": "#666666"
+      },
+      "encode": {
+        "update": {
+          "width": {
+            "signal": "brandColumn"
+          },
+          "height": {"signal": "height"}
+        }
+      },
+      "marks": [
+        {
+          "type": "text",
+          "style": "col",
+          "from": {"data": "y_scale"},
+          "encode": {
+            "update": {
+              "align": {
+                "value": "left"
+              },
+              "fill": {
+                "signal": "datum.Program == datum.Brand?'#555555':'#666666'"
+              },
+              "dx": {
+                "signal": "datum.Program != datum.Brand?'0':'0'"
+              },
+              "y": {
+                "signal": "scale('y',datum.Brand)+bandwidth('y')/2"
+              },
+              "text": {
+                "signal": "datum.Program == datum.Brand?upper(datum.Brand):datum.Brand"
+              },
+              "fontWeight": {
+                "signal": "datum.Program == datum.Brand?'bold':'normal'"
+              },
+              "baseline": {
+                "value": "middle"
+              },
+              "limit": {
+                "signal": "brandColumn"
+              }
+            }
+          }
+        },
+        {
+          "type": "symbol",
+          "from": {"data": "y_scale"},
+          "encode": {
+            "update": {
+              "fill": {
+                "signal": "datum.Program != datum.Brand? scale('cStroke', datum.Program):'#666666'"
+              },
+              "x2": {
+                "signal": "datum.Program != datum.Brand?'0':'-10'"
+              },
+              "yc": {
+                "signal": "(scale('y',datum.Brand)+bandwidth('y')/2)-1"
+              },
+              "shape": {
+                "value": "square"
+              }
+            }
+          }
+        }
+      ]
+    },
+    {
+      "type": "group",
+      "name": "startColumn",
+      "style": "cell",
+      "title": {
+        "text": "Start",
+        "anchor": "end",
+        "frame": "group",
+        "align": "right",
+        "color": "#666666"
+      },
+      "encode": {
+        "update": {
+          "width": {
+            "signal": "startColumn"
+          },
+          "height": {"signal": "height"}
+        }
+      },
+      "marks": [
+        {
+          "type": "text",
+          "style": "col",
+          "from": {"data": "y_scale"},
+          "encode": {
+            "update": {
+              "align": {
+                "value": "right"
+              },
+              "x": {
+                "signal": "startColumn"
+              },
+              "fill": {
+                "signal": "datum.Program == datum.Brand?'#666666':'#666666'"
+              },
+              "y": {
+                "signal": "scale('y',datum.Brand)+bandwidth('y')/2"
+              },
+              "text": {
+                "signal": "datum.Program != datum.Brand? timeFormat(datum.start,' %d/%m/%y'): ''"
+              },
+              "baseline": {
+                "value": "middle"
+              },
+              "fontWeight": {
+                "signal": "datum.Program == datum.Brand?'bold':'normal'"
+              }
+            }
+          }
+        }
+      ]
+    },
+    {
+      "type": "group",
+      "name": "endColumn",
+      "style": "cell",
+      "title": {
+        "text": "End",
+        "anchor": "end",
+        "frame": "group",
+        "align": "right",
+        "color": "#666666"
+      },
+      "encode": {
+        "update": {
+          "width": {
+            "signal": "endColumn"
+          },
+          "height": {"signal": "height"}
+        }
+      },
+      "marks": [
+        {
+          "type": "text",
+          "style": "col",
+          "from": {"data": "y_scale"},
+          "encode": {
+            "update": {
+              "align": {
+                "value": "right"
+              },
+              "x": {
+                "signal": "endColumn"
+              },
+              "fill": {
+                "signal": "datum.Program == datum.Brand?'#666666':'#666666'"
+              },
+              "y": {
+                "signal": "scale('y',datum.Brand)+bandwidth('y')/2"
+              },
+              "text": {
+                "signal": "datum.Program != datum.Brand? timeFormat(datum.end,' %d/%m/%y'): ''"
+              },
+              "baseline": {
+                "value": "middle"
+              },
+              "fontWeight": {
+                "signal": "datum.Program == datum.Brand?'bold':'normal'"
+              }
+            }
+          }
+        }
+      ]
+    },
+    {
+      "type": "group",
+      "name": "costColumn",
+      "style": "cell",
+      "title": {
+        "text": "Cost",
+        "anchor": "end",
+        "frame": "group",
+        "align": "right",
+        "color": "#666666"
+      },
+      "encode": {
+        "update": {
+          "width": {
+            "signal": "costColumn"
+          },
+          "height": {"signal": "height"}
+        }
+      },
+      "marks": [
+        {
+          "type": "text",
+          "style": "col",
+          "from": {"data": "y_scale"},
+          "encode": {
+            "update": {
+              "align": {
+                "value": "right"
+              },
+              "fill": {
+                "signal": "datum.Program == datum.Brand?'#666666':'#666666'"
+              },
+              "x": {
+                "signal": "costColumn"
+              },
+              "y": {
+                "signal": "scale('y',datum.Brand)+bandwidth('y')/2"
+              },
+              "text": {
+                "signal": "datum.Program != datum.Brand? pbiFormat(datum.Cost, '$#,#,#'): ''"
+              },
+              "baseline": {
+                "value": "middle"
+              },
+              "fontWeight": {
+                "signal": "datum.Program == datum.Brand?'bold':'normal'"
+              }
+            }
+          }
+        }
+      ]
+    },
+    {
+      "type": "group",
+      "name": "daysColumn",
+      "style": "cell",
+      "title": {
+        "text": "Days",
+        "anchor": "end",
+        "frame": "group",
+        "align": "right",
+        "color": "#666666"
+      },
+      "encode": {
+        "update": {
+          "width": {
+            "signal": "daysColumn"
+          },
+          "height": {"signal": "height"}
+        }
+      },
+      "marks": [
+        {
+          "type": "text",
+          "style": "col",
+          "from": {"data": "y_scale"},
+          "encode": {
+            "update": {
+              "align": {
+                "value": "right"
+              },
+              "fill": {
+                "signal": "datum.Program == datum.Brand?'#666666':'#666666'"
+              },
+              "x": {
+                "signal": "daysColumn"
+              },
+              "y": {
+                "signal": "scale('y',datum.Brand)+bandwidth('y')/2"
+              },
+              "text": {
+                "signal": "datum.Program != datum.Brand? datum.days+' D': ' '"
+              },
+              "baseline": {
+                "value": "middle"
+              },
+              "fontWeight": {
+                "signal": "datum.Program == datum.Brand?'bold':'normal'"
+              }
+            }
+          }
+        }
+      ]
+    },
+    {
+      "type": "group",
+      "name": "completionColumn",
+      "style": "cell",
+      "title": {
+        "text": "Complete",
+        "anchor": "start",
+        "frame": "group",
+        "color": "#666666"
+      },
+      "encode": {
+        "update": {
+          "width": {
+            "signal": "completionColumn"
+          },
+          "height": {"signal": "height"}
+        }
+      },
+      "marks": [
+        {
+          "type": "rect",
+          "from": {"data": "y_scale"},
+          "encode": {
+            "update": {
+              "x": {"signal": "0"},
+              "width": {
+                "signal": "item.mark.group.width"
+              },
+              "stroke": {
+                "signal": "datum.Program != datum.Brand? '#a0d786': ''"
+              },
+              "yc": {
+                "signal": "(scale('y',datum.Brand)+bandwidth('y')/2)"
+              },
+              "strokeWidth": {
+                "value": 1
+              },
+              "height": {
+                "signal": "bandwidth('y')"
+              }
+            }
+          }
+        },
+        {
+          "type": "rect",
+          "from": {"data": "y_scale"},
+          "encode": {
+            "update": {
+              "x": {"signal": "0"},
+              "width": {
+                "signal": "(item.mark.group.width/100)*datum.completion"
+              },
+              "fill": {
+                "signal": "datum.Program != datum.Brand? '#c6ecb5': ''"
+              },
+              "yc": {
+                "signal": "(scale('y',datum.Brand)+bandwidth('y')/2)"
+              },
+              "strokeWidth": {
+                "value": 1
+              },
+              "height": {
+                "signal": "bandwidth('y')"
+              }
+            }
+          }
+        },
+        {
+          "type": "text",
+          "from": {"data": "y_scale"},
+          "encode": {
+            "update": {
+              "align": {
+                "value": "left"
+              },
+              "dx": {"value": 3},
+              "fill": {
+                "signal": "'#666666'"
+              },
+              "y": {
+                "signal": "scale('y',datum.Brand)+bandwidth('y')/2"
+              },
+              "text": {
+                "signal": "datum.Program != datum.Brand? datum.completion+'%': ''"
+              },
+              "baseline": {
+                "value": "middle"
+              }
+            }
+          }
+        }
+      ]
+    },
+    {
+      "type": "group",
+      "name": "gantt",
+      "encode": {
+        "update": {
+          "width": {
+            "signal": "ganttWidth"
+          },
+          "height": {"signal": "height"}
+        }
+      },
+      "marks": [
+        {
+          "name": "labelSizes",
+          "clip": true,
+          "type": "text",
+          "from": {"data": "brands"},
+          "encode": {
+            "enter": {
+              "fill": {
+                "value": "transparent"
+              },
+              "text": {
+                "signal": "datum.completionLabel"
+              },
+              "x": {"value": 0},
+              "y": {"value": 10}
+            }
+          }
+        },
+        {
+          "type": "rect",
+          "description": "Weekend shading",
+          "name": "weekendShading",
+          "from": {"data": "weekends"},
+          "encode": {
+            "update": {
+              "x": {
+                "field": "encodedDate",
+                "scale": "xDays"
+              },
+              "width": {
+                "signal": "bandwidth('xDays')"
+              },
+              "y": {"value": -15},
+              "height": {
+                "signal": "height+15"
+              },
+              "strokeWidth": {
+                "signal": "1"
+              },
+              "stroke": {
+                "value": "#f1f1f1"
+              },
+              "fill": {
+                "value": "#f1f1f1"
+              }
+            }
+          }
+        },
+        {
+          "name": "programBars",
+          "description": "The program bars",
+          "type": "group",
+          "clip": true,
+          "from": {"data": "programs"},
+          "encode": {
+            "update": {
+              "width": {
+                "signal": "ganttWidth"
+              },
+              "height": {
+                "signal": "height"
+              },
+              "strokeWidth": {
+                "value": 1
+              }
+            }
+          },
+          "marks": [
+            {
+              "name": "outline",
+              "type": "rect",
+              "clip": true,
+              "from": {"data": "programs"},
+              "encode": {
+                "update": {
+                  "x": {"signal": "0"},
+                  "width": {
+                    "signal": "item.mark.group.width"
+                  },
+                  "stroke": {
+                    "signal": "'#D3D3D3'"
+                  },
+                  "yc": {
+                    "signal": "(scale('y',datum.Program)+bandwidth('y')/2)"
+                  },
+                  "strokeWidth": {
+                    "value": 1
+                  },
+                  "height": {
+                    "signal": "bandwidth('y')"
+                  },
+                  "tooltip": {
+                    "signal": "{'Program':datum.Program , 'Cost':datum.sum }"
+                  }
+                }
+              }
+            },
+            {
+              "name": "fills",
+              "type": "rect",
+              "clip": true,
+              "from": {"data": "programs"},
+              "encode": {
+                "update": {
+                  "x": {"signal": "0"},
+                  "width": {
+                    "signal": "(item.mark.group.width)"
+                  },
+                  "fill": {
+                    "signal": "'#D3D3D3'"
+                  },
+                  "yc": {
+                    "signal": "(scale('y',datum.Program)+bandwidth('y')/2)"
+                  },
+                  "strokeWidth": {
+                    "value": 1
+                  },
+                  "height": {
+                    "signal": "bandwidth('y')"
+                  },
+                  "tooltip": {
+                    "signal": "{'Program':datum.Program , 'Cost':datum.sum }"
+                  }
+                }
+              }
+            }
+          ]
+        },
+        {
+          "name": "brandBars",
+          "description": "The brand bars (serve as an outline for percent complete)",
+          "type": "group",
+          "clip": false,
+          "from": {"data": "brands"},
+          "encode": {
+            "update": {
+              "x": {
+                "scale": "xDays",
+                "field": "encodedStart"
+              },
+              "x2": {
+                "scale": "xDays",
+                "field": "encodedEnd"
+              },
+              "y": {
+                "scale": "y",
+                "field": "Brand"
+              },
+              "height": {
+                "signal": "bandwidth('y')"
+              },
+              "tooltip": {
+                "signal": "{'Program':datum.Program ,'Brand':datum.Brand , 'Start':timeFormat(datum.start,'%a, %d %B %Y' ),'End':timeFormat(datum.end,'%a, %d %B %Y' ), 'Cost':datum.Cost, 'Days':datum.days,'Remaining':100 - datum.completion+'%' }"
+              },
+              "fill": {
+                "field": "Status",
+                "scale": "cFill"
+              },
+              "stroke": {
+                "field": "Status",
+                "scale": "cStroke"
+              },
+              "strokeWidth": {
+                "value": 1
+              },
+              "cornerRadius": {
+                "value": 5
+              },
+              "zindex": {"value": 2}
+            }
+          },
+          "transform": [
+            {
+              "type": "lookup",
+              "from": "labelSizes",
+              "key": "text",
+              "fields": [
+                "datum.completionLabel"
+              ],
+              "values": [
+                "bounds.x1",
+                "bounds.x2"
+              ],
+              "as": ["a", "b"]
+            }
+          ],
+          "marks": [
+            {
+              "name": "fills",
+              "description": "Percent complete for each brand",
+              "type": "rect",
+              "clip": true,
+              "encode": {
+                "update": {
+                  "x": {
+                    "signal": "item.mark.group.x1"
+                  },
+                  "y": {
+                    "signal": "item.mark.group.y1"
+                  },
+                  "height": {
+                    "signal": "item.mark.group.height"
+                  },
+                  "width": {
+                    "signal": "(item.mark.group.width/100)* item.mark.group.datum.completion"
+                  },
+                  "fill": {
+                    "signal": "item.mark.group.datum.Status",
+                    "scale": "cStroke"
+                  },
+                  "stroke": {
+                    "signal": "item.mark.group.datum.Status",
+                    "scale": "cStroke"
+                  },
+                  "strokeWidth": {
+                    "value": 2
+                  },
+                  "cornerRadiusBottomLeft": {
+                    "value": 5
+                  },
+                  "cornerRadiusTopLeft": {
+                    "value": 5
+                  },
+                  "tooltip": {
+                    "signal": "{'Program':parent.Program ,'Brand':parent.Brand , 'Start':timeFormat(parent.start,'%a, %d %B %Y' ),'End':timeFormat(parent.end,'%a, %d %B %Y' ), 'Cost':parent.Cost, 'Days':parent.days,'Completed':parent.completion+'%' }"
+                  }
+                }
+              }
+            },
+            {
+              "name": "completeText",
+              "description": "Completion Text",
+              "type": "text",
+              "encode": {
+                "update": {
+                  "x": {
+                    "signal": "(item.mark.group.width/100)* parent.completion"
+                  },
+                  "align": {
+                    "signal": "'right'"
+                  },
+                  "dx": {
+                    "signal": "-2"
+                  },
+                  "y": {
+                    "signal": "item.mark.group.height-bandwidth('y')/2+1"
+                  },
+                  "baseline": {
+                    "value": "middle"
+                  },
+                  "text": {
+                    "signal": "((item.mark.group.width/100)* parent.completion)>item.mark.group.b && parent.completion>0?parent.completionLabel:''"
+                  },
+                  "fill": {
+                    "value": "white"
+                  }
+                }
+              }
+            },
+            {
+              "name": "brandName",
+              "description": "Brand name",
+              "type": "text",
+              "encode": {
+                "update": {
+                  "x": {
+                    "signal": "item.mark.group.width"
+                  },
+                  "align": {
+                    "signal": "'left'"
+                  },
+                  "dx": {"signal": "5"},
+                  "y": {
+                    "signal": "item.mark.group.height-bandwidth('y')/2+1"
+                  },
+                  "baseline": {
+                    "value": "middle"
+                  },
+                  "text": {
+                    "signal": "parent.Brand + ' ('+ pbiFormat(parent.Cost, '$#,#,#') +')'"
+                  },
+                  "fill": {
+                    "value": "#666666"
+                  }
+                }
+              }
+            }
+          ]
+        },
+        {
+          "name": "todayRule",
+          "description": "Today rule",
+          "type": "rule",
+          "data": [{}],
+          "encode": {
+            "update": {
+              "x": {
+                "signal": "scale('xDays',todayRule) + (bandwidth('xDays')/2)"
+              },
+              "y": {"value": 0},
+              "y2": {
+                "signal": "height"
+              },
+              "height": {
+                "signal": "height"
+              },
+              "strokeWidth": {
+                "signal": "indata('dayScale', 'encodedDate', todayRule)? 1:0"
+              },
+              "stroke": {
+                "value": "#e30206"
+              },
+              "strokeDash": {
+                "value": [2, 2]
+              },
+              "opacity": {"value": 0.8}
+            }
+          }
+        },
+        {
+          "name": "todayText",
+          "description": "Today text",
+          "type": "text",
+          "data": [{}],
+          "encode": {
+            "update": {
+              "x": {
+                "signal": "scale('xDays',todayRule) + (bandwidth('xDays')/2)"
+              },
+              "y": {"value": 0},
+              "fill": {
+                "value": "#e30206"
+              },
+              "text": {
+                "signal": "indata('dayScale', 'encodedDate', todayRule)? 'Today':''"
+              },
+              "angle": {"signal": "90"},
+              "baseline": {
+                "value": "bottom"
+              },
+              "dx": {"value": 10},
+              "dy": {"value": -4},
+              "opacity": {"value": 1},
+              "font": {"value": ""}
+            }
+          }
+        },
+        {
+          "name": "todayHighlight",
+          "description": "Today highlight",
+          "type": "rect",
+          "data": [{}],
+          "encode": {
+            "update": {
+              "cornerRadius": {
+                "value": 0
+              },
+              "x": {
+                "signal": "scale('xDays',todayRule) "
+              },
+              "width": {
+                "signal": "bandwidth('xDays')"
+              },
+              "y": {"value": -15},
+              "height": {
+                "signal": "15"
+              },
+              "fill": {
+                "value": "#FFD7CD"
+              },
+              "opacity": {
+                "signal": "indata('dayScale', 'encodedDate', todayRule)? 1:0"
+              }
+            }
+          }
+        }
+      ],
+      "axes": [
+        {
+          "description": "Day axis",
+          "ticks": true,
+          "labelPadding": -12,
+          "scale": "xDays",
+          "tickSize": 15,
+          "orient": "top",
+          "bandPosition": 0,
+          "grid": false,
+          "zindex": 1,
+          "encode": {
+            "labels": {
+              "update": {
+                "text": [
+                  {
+                    "signal": "timeFormat(timeParse(datum.label,'%d/%m/%y'),'%d')"
+                  }
+                ]
+              }
+            }
+          }
+        },
+        {
+          "description": "Month axis",
+          "scale": "xDays",
+          "domain": false,
+          "orient": "top",
+          "offset": 0,
+          "tickSize": 25,
+          "labelFontSize": 12,
+          "bandPosition": 0,
+          "grid": false,
+          "zindex": 0,
+          "encode": {
+            "ticks": {
+              "update": {
+                "strokeOpacity": [
+                  {
+                    "test": "timeFormat(timeParse(datum.label,'%d/%m/%y'),'%d')   == '01'",
+                    "value": 1
+                  },
+                  {"value": 0}
+                ]
+              }
+            },
+            "labels": {
+              "update": {
+                "text": [
+                  {
+                    "test": "timeFormat(timeParse(datum.label,'%d/%m/%y'),'%d')   == '15'",
+                    "signal": "timeFormat(timeParse(datum.label,'%d/%m/%y'),'%B')"
+                  },
+                  {"value": ""}
+                ]
+              }
+            }
+          }
+        },
+        {
+          "scale": "y",
+          "orient": "left",
+          "encode": {
+            "ticks": {
+              "update": {
+                "x2": {
+                  "signal": "-brandColumn-startColumn-endColumn-costColumn-daysColumn-completionColumn-(columnPadding*5)-15"
+                }
+              }
+            }
+          },
+          "tickColor": "#f1f1f1",
+          "bandPosition": 1.35,
+          "labels": false,
+          "title": "",
+          "ticks": true,
+          "zindex": 0
+        }
+      ]
+    }
+  ],
+  "scales": [
+    {
+      "name": "xDays",
+      "type": "band",
+      "domain": {
+        "data": "dayScale",
+        "fields": ["encodedDate"]
+      },
+      "range": {
+        "signal": "[0,ganttWidth]"
+      }
+    },
+    {
+      "name": "y",
+      "type": "band",
+      "domain": {
+        "fields": [
+          {
+            "data": "y_scale",
+            "field": "Brand"
+          }
+        ],
+        "sort": {
+          "op": "min",
+          "field": "finalSort",
+          "order": "ascending"
+        }
+      },
+      "range": {
+        "step": {"signal": "y_step"}
+      },
+      "paddingInner": {
+        "signal": "yPaddingInner"
+      },
+      "paddingOuter": {
+        "signal": "yPaddingOuter"
+      }
+    },
+    {
+      "name": "cStroke",
+      "type": "ordinal",
+      "range": [
+        "hsl(207, 54%, 47%)",
+        "hsl(118, 41%, 49%)",
+        "hsl(292, 35%, 47%)",
+        "hsl(30, 100%, 50%)",
+        "hsl(359, 80%, 50%)"
+      ],
+      "domain": {
+        "data": "input",
+        "field": "Status",
+        "sort": {
+          "op": "min",
+          "field": "start",
+          "order": "descending"
+        }
+      }
+    },
+    {
+      "name": "cFill",
+      "type": "ordinal",
+      "range": [
+        "hsl(207, 54%, 77%)",
+        "hsl(118, 41%, 79%)",
+        "hsl(292, 35%, 77%)",
+        "hsl(30, 100%, 80%)",
+        "hsl(359, 80%, 80%)"
+      ],
+      "domain": {
+        "data": "input",
+        "field": "Status",
+        "sort": {
+          "op": "min",
+          "field": "start",
+          "order": "descending"
+        }
+      }
+    }
+  ],
+  "config": {
+    "view": {"stroke": "transparent"},
+    "style": {
+      "col": {"fontSize": 11},
+      "cell": {
+        "strokeWidth": {"signal": "0"}
+      }
+    },
+    "font": "Arial",
+    "text": {
+      "font": "Arial",
+      "fontSize": 10,
+      "fill": "#666666"
+    },          
+    "axis": {
+      "labelColor": "#666666",
+      "labelFontSize": 10,
+      "titleFont": "arial",
+      "titleColor": "#252423",
+      "titleFontSize": 16,
+      "titleFontWeight": "normal"
+    },
+    "axisY": {"labelPadding": 10}
+  }
+}
